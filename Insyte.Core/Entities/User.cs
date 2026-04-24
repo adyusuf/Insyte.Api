@@ -18,4 +18,6 @@ public class User
     public ICollection<SchoolAdvisor> AdvisedSchools { get; set; } = new List<SchoolAdvisor>();
     public ICollection<SchoolUser> SchoolUsers { get; set; } = new List<SchoolUser>();
     public ICollection<Video> UploadedVideos { get; set; } = new List<Video>();
+    public ICollection<WorkingGroupMember> WorkingGroupMemberships { get; set; } = new List<WorkingGroupMember>();
+    public ICollection<CouncilMember> CouncilMemberships { get; set; } = new List<CouncilMember>();
 }

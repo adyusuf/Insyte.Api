@@ -34,4 +34,6 @@ public class School
     public ICollection<SchoolServiceOffering> Services { get; set; } = new List<SchoolServiceOffering>();
     public ICollection<SchoolActivity> Activities { get; set; } = new List<SchoolActivity>();
     public ICollection<SchoolLanguage> Languages { get; set; } = new List<SchoolLanguage>();
+    public ICollection<WorkingGroup> WorkingGroups { get; set; } = new List<WorkingGroup>();
+    public ICollection<Council> Councils { get; set; } = new List<Council>();
 }
