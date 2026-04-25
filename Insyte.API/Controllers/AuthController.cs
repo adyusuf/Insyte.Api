@@ -5,13 +5,14 @@ using Insyte.API.DTOs;
 using Insyte.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Insyte.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 public class AuthController : ControllerBase
 {
     private readonly InsyteDbContext _db;
@@ -24,10 +25,16 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive);
-        if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+
+        // Timing attack koruması: kullanıcı bulunamasa da BCrypt çalıştır
+        var passwordHash = user?.PasswordHash ?? BCrypt.Net.BCrypt.HashPassword("dummy-to-prevent-timing-attack");
+        var passwordValid = BCrypt.Net.BCrypt.Verify(request.Password, passwordHash);
+
+        if (user == null || !passwordValid)
             return Unauthorized(new ApiError(false, "Geçersiz e-posta veya şifre"));
 
         var accessToken = GenerateToken(user.Id, user.Email, user.Role.ToString(),
