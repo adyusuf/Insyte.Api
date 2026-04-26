@@ -1,28 +1,77 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="xunit" Version="2.6.0" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.0">
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="FluentAssertions" Version="6.12.0" />
-    <PackageReference Include="Moq" Version="4.18.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.0" />
+    <PackageReference Include="FluentAssertions" Version="6.8.0" />
+    <PackageReference Include="Moq" Version="4.18.3" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="Insyte.API/Insyte.API.csproj" />
-    <ProjectReference Include="Insyte.Core/Insyte.Core.csproj" />
-    <ProjectReference Include="Insyte.Infrastructure/Insyte.Infrastructure.csproj" />
+    <ProjectReference Include="../Insyte.API/Insyte.API.csproj" />
+    <ProjectReference Include="../Insyte.Core/Insyte.Core.csproj" />
+    <ProjectReference Include="../Insyte.Infrastructure/Insyte.Infrastructure.csproj" />
   </ItemGroup>
+
+  <!--
+    Copy NuGet package runtime DLLs to the test output directory.
+    .NET 10 test projects do not automatically copy non-net10.0 TFM package DLLs, so we do it here.
+    Run "python3 scripts/find-missing-dlls.py" to regenerate this list when packages change.
+  -->
+  <Target Name="CopyNuGetRuntimeDlls" AfterTargets="Build">
+    <ItemGroup>
+      <_NuGetDlls Include="
+        $(NuGetPackageRoot)/bcrypt.net-next/4.0.3/lib/net6.0/BCrypt.Net-Next.dll;
+        $(NuGetPackageRoot)/castle.core/5.1.0/lib/net6.0/Castle.Core.dll;
+        $(NuGetPackageRoot)/fluentassertions/6.8.0/lib/net6.0/FluentAssertions.dll;
+        $(NuGetPackageRoot)/fluentvalidation/11.11.0/lib/net8.0/FluentValidation.dll;
+        $(NuGetPackageRoot)/fluentvalidation.aspnetcore/11.3.1/lib/net6.0/FluentValidation.AspNetCore.dll;
+        $(NuGetPackageRoot)/fluentvalidation.dependencyinjectionextensions/11.11.0/lib/netstandard2.1/FluentValidation.DependencyInjectionExtensions.dll;
+        $(NuGetPackageRoot)/microsoft.aspnetcore.authentication.jwtbearer/9.0.4/lib/net9.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll;
+        $(NuGetPackageRoot)/microsoft.aspnetcore.mvc.testing/10.0.0/lib/net10.0/Microsoft.AspNetCore.Mvc.Testing.dll;
+        $(NuGetPackageRoot)/microsoft.aspnetcore.testhost/10.0.0/lib/net10.0/Microsoft.AspNetCore.TestHost.dll;
+        $(NuGetPackageRoot)/microsoft.entityframeworkcore/10.0.0/lib/net10.0/Microsoft.EntityFrameworkCore.dll;
+        $(NuGetPackageRoot)/microsoft.entityframeworkcore.abstractions/10.0.0/lib/net10.0/Microsoft.EntityFrameworkCore.Abstractions.dll;
+        $(NuGetPackageRoot)/microsoft.entityframeworkcore.inmemory/10.0.0/lib/net10.0/Microsoft.EntityFrameworkCore.InMemory.dll;
+        $(NuGetPackageRoot)/microsoft.entityframeworkcore.relational/9.0.4/lib/net8.0/Microsoft.EntityFrameworkCore.Relational.dll;
+        $(NuGetPackageRoot)/microsoft.extensions.dependencymodel/10.0.0/lib/net10.0/Microsoft.Extensions.DependencyModel.dll;
+        $(NuGetPackageRoot)/microsoft.identitymodel.abstractions/8.0.1/lib/net9.0/Microsoft.IdentityModel.Abstractions.dll;
+        $(NuGetPackageRoot)/microsoft.identitymodel.jsonwebtokens/8.0.1/lib/net9.0/Microsoft.IdentityModel.JsonWebTokens.dll;
+        $(NuGetPackageRoot)/microsoft.identitymodel.logging/8.0.1/lib/net9.0/Microsoft.IdentityModel.Logging.dll;
+        $(NuGetPackageRoot)/microsoft.identitymodel.protocols/8.0.1/lib/net9.0/Microsoft.IdentityModel.Protocols.dll;
+        $(NuGetPackageRoot)/microsoft.identitymodel.protocols.openidconnect/8.0.1/lib/net9.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll;
+        $(NuGetPackageRoot)/microsoft.identitymodel.tokens/8.0.1/lib/net9.0/Microsoft.IdentityModel.Tokens.dll;
+        $(NuGetPackageRoot)/microsoft.openapi/1.2.3/lib/netstandard2.0/Microsoft.OpenApi.dll;
+        $(NuGetPackageRoot)/moq/4.18.3/lib/net6.0/Moq.dll;
+        $(NuGetPackageRoot)/npgsql/9.0.3/lib/net8.0/Npgsql.dll;
+        $(NuGetPackageRoot)/npgsql.entityframeworkcore.postgresql/9.0.4/lib/net8.0/Npgsql.EntityFrameworkCore.PostgreSQL.dll;
+        $(NuGetPackageRoot)/swashbuckle.aspnetcore.swagger/6.5.0/lib/net7.0/Swashbuckle.AspNetCore.Swagger.dll;
+        $(NuGetPackageRoot)/swashbuckle.aspnetcore.swaggergen/6.5.0/lib/net7.0/Swashbuckle.AspNetCore.SwaggerGen.dll;
+        $(NuGetPackageRoot)/swashbuckle.aspnetcore.swaggerui/6.5.0/lib/net7.0/Swashbuckle.AspNetCore.SwaggerUI.dll;
+        $(NuGetPackageRoot)/system.configuration.configurationmanager/4.4.0/lib/netstandard2.0/System.Configuration.ConfigurationManager.dll;
+        $(NuGetPackageRoot)/system.identitymodel.tokens.jwt/8.0.1/lib/net9.0/System.IdentityModel.Tokens.Jwt.dll;
+        $(NuGetPackageRoot)/system.security.cryptography.protecteddata/4.4.0/lib/netstandard2.0/System.Security.Cryptography.ProtectedData.dll;
+        $(NuGetPackageRoot)/xunit.assert/2.9.3/lib/net6.0/xunit.assert.dll;
+        $(NuGetPackageRoot)/xunit.extensibility.core/2.9.3/lib/netstandard1.1/xunit.core.dll;
+        $(NuGetPackageRoot)/xunit.extensibility.execution/2.9.3/lib/netstandard1.1/xunit.execution.dotnet.dll
+      " />
+    </ItemGroup>
+    <Copy SourceFiles="@(_NuGetDlls)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>
