@@ -34,10 +34,6 @@ public class InsyteDbContext : DbContext
     public DbSet<SchoolActivity> SchoolActivities => Set<SchoolActivity>();
     public DbSet<SchoolLanguage> SchoolLanguages => Set<SchoolLanguage>();
     public DbSet<EvaluationQuestion> EvaluationQuestions => Set<EvaluationQuestion>();
-    public DbSet<WorkingGroup> WorkingGroups => Set<WorkingGroup>();
-    public DbSet<WorkingGroupMember> WorkingGroupMembers => Set<WorkingGroupMember>();
-    public DbSet<Council> Councils => Set<Council>();
-    public DbSet<CouncilMember> CouncilMembers => Set<CouncilMember>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -194,35 +190,6 @@ public class InsyteDbContext : DbContext
             e.HasIndex(q => new { q.CriteriaId, q.Order });
         });
 
-        // WorkingGroup
-        modelBuilder.Entity<WorkingGroup>(e =>
-        {
-            e.HasOne(wg => wg.School).WithMany(s => s.WorkingGroups).HasForeignKey(wg => wg.SchoolId).OnDelete(DeleteBehavior.Cascade);
-            e.HasIndex(wg => new { wg.SchoolId, wg.Name });
-        });
-
-        // WorkingGroupMember
-        modelBuilder.Entity<WorkingGroupMember>(e =>
-        {
-            e.HasIndex(wgm => new { wgm.WorkingGroupId, wgm.UserId }).IsUnique();
-            e.HasOne(wgm => wgm.WorkingGroup).WithMany(wg => wg.Members).HasForeignKey(wgm => wgm.WorkingGroupId).OnDelete(DeleteBehavior.Cascade);
-            e.HasOne(wgm => wgm.User).WithMany(u => u.WorkingGroupMemberships).HasForeignKey(wgm => wgm.UserId).OnDelete(DeleteBehavior.Cascade);
-        });
-
-        // Council
-        modelBuilder.Entity<Council>(e =>
-        {
-            e.HasOne(c => c.School).WithMany(s => s.Councils).HasForeignKey(c => c.SchoolId).OnDelete(DeleteBehavior.Cascade);
-            e.HasIndex(c => new { c.SchoolId, c.Name });
-        });
-
-        // CouncilMember
-        modelBuilder.Entity<CouncilMember>(e =>
-        {
-            e.HasIndex(cm => new { cm.CouncilId, cm.UserId }).IsUnique();
-            e.HasOne(cm => cm.Council).WithMany(c => c.Members).HasForeignKey(cm => cm.CouncilId).OnDelete(DeleteBehavior.Cascade);
-            e.HasOne(cm => cm.User).WithMany(u => u.CouncilMemberships).HasForeignKey(cm => cm.UserId).OnDelete(DeleteBehavior.Cascade);
-        });
 
         // Seed admin user
         var adminId = Guid.Parse("00000000-0000-0000-0000-000000000001");

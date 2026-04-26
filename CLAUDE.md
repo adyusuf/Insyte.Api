@@ -163,27 +163,6 @@ public async Task<IActionResult> RaporOnayla(Guid id)
 
 Yetkilendirme matrisi: `../docs/yetkilendirme.md`. Teknik: `docs/yetkilendirme-teknik.md`.
 
-## Çalışma Grupları & Kurullar
-
-**Endpoint'ler:**
-- `GET /api/v1/working-groups` — liste (search + pagination)
-- `POST /api/v1/working-groups` — oluştur
-- `GET /api/v1/working-groups/{id}` — detay
-- `PUT /api/v1/working-groups/{id}` — güncelle
-- `DELETE /api/v1/working-groups/{id}` — soft delete
-- `GET /api/v1/working-groups/{id}/members` — üye listesi
-- `POST /api/v1/working-groups/{id}/members` — üye ekle
-- `DELETE /api/v1/working-groups/{id}/members/{memberId}` — üye sil
-- `PUT /api/v1/working-groups/{id}/members/{memberId}` — üye rolü güncelle
-
-**Aynı endpoints `/api/v1/councils` için de geçerli.**
-
-**Özellikler:**
-- Okul-bazlı scope: her sorgu kullanıcının erişim listeleri filtrelemeleri
-- Policy-based yetki: `AllStaff` (oluştur/güncelle), `AdminOnly` (sil)
-- Üyeler `WorkingGroupMember` / `CouncilMember` tabloları üzerinden
-- Token ve transactional integrity
-- Soft delete pattern
 
 ## AI orkestrasyonu
 

@@ -129,65 +129,6 @@ namespace Insyte.Infrastructure.Migrations
                     b.ToTable("Classes");
                 });
 
-            modelBuilder.Entity("Insyte.Core.Entities.Council", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("SchoolId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SchoolId", "Name");
-
-                    b.ToTable("Councils");
-                });
-
-            modelBuilder.Entity("Insyte.Core.Entities.CouncilMember", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("AssignedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("CouncilId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Role")
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("CouncilId", "UserId")
-                        .IsUnique();
-
-                    b.ToTable("CouncilMembers");
-                });
 
             modelBuilder.Entity("Insyte.Core.Entities.EmailConfig", b =>
                 {
@@ -1527,65 +1468,6 @@ namespace Insyte.Infrastructure.Migrations
                     b.ToTable("Videos");
                 });
 
-            modelBuilder.Entity("Insyte.Core.Entities.WorkingGroup", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("SchoolId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SchoolId", "Name");
-
-                    b.ToTable("WorkingGroups");
-                });
-
-            modelBuilder.Entity("Insyte.Core.Entities.WorkingGroupMember", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("AssignedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Role")
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("WorkingGroupId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("WorkingGroupId", "UserId")
-                        .IsUnique();
-
-                    b.ToTable("WorkingGroupMembers");
-                });
 
             modelBuilder.Entity("Insyte.Core.Entities.AIModel", b =>
                 {
@@ -1609,35 +1491,6 @@ namespace Insyte.Infrastructure.Migrations
                     b.Navigation("School");
                 });
 
-            modelBuilder.Entity("Insyte.Core.Entities.Council", b =>
-                {
-                    b.HasOne("Insyte.Core.Entities.School", "School")
-                        .WithMany("Councils")
-                        .HasForeignKey("SchoolId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("School");
-                });
-
-            modelBuilder.Entity("Insyte.Core.Entities.CouncilMember", b =>
-                {
-                    b.HasOne("Insyte.Core.Entities.Council", "Council")
-                        .WithMany("Members")
-                        .HasForeignKey("CouncilId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Insyte.Core.Entities.User", "User")
-                        .WithMany("CouncilMemberships")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Council");
-
-                    b.Navigation("User");
-                });
 
             modelBuilder.Entity("Insyte.Core.Entities.EmailConfig", b =>
                 {
@@ -1872,35 +1725,6 @@ namespace Insyte.Infrastructure.Migrations
                     b.Navigation("UploadedBy");
                 });
 
-            modelBuilder.Entity("Insyte.Core.Entities.WorkingGroup", b =>
-                {
-                    b.HasOne("Insyte.Core.Entities.School", "School")
-                        .WithMany("WorkingGroups")
-                        .HasForeignKey("SchoolId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("School");
-                });
-
-            modelBuilder.Entity("Insyte.Core.Entities.WorkingGroupMember", b =>
-                {
-                    b.HasOne("Insyte.Core.Entities.User", "User")
-                        .WithMany("WorkingGroupMemberships")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Insyte.Core.Entities.WorkingGroup", "WorkingGroup")
-                        .WithMany("Members")
-                        .HasForeignKey("WorkingGroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-
-                    b.Navigation("WorkingGroup");
-                });
 
             modelBuilder.Entity("Insyte.Core.Entities.AIModel", b =>
                 {
@@ -1917,10 +1741,6 @@ namespace Insyte.Infrastructure.Migrations
                     b.Navigation("Schedules");
                 });
 
-            modelBuilder.Entity("Insyte.Core.Entities.Council", b =>
-                {
-                    b.Navigation("Members");
-                });
 
             modelBuilder.Entity("Insyte.Core.Entities.Evaluation", b =>
                 {
@@ -1947,8 +1767,6 @@ namespace Insyte.Infrastructure.Migrations
 
                     b.Navigation("Classes");
 
-                    b.Navigation("Councils");
-
                     b.Navigation("EmailConfigs");
 
                     b.Navigation("Facilities");
@@ -1964,8 +1782,6 @@ namespace Insyte.Infrastructure.Migrations
                     b.Navigation("Users");
 
                     b.Navigation("Videos");
-
-                    b.Navigation("WorkingGroups");
                 });
 
             modelBuilder.Entity("Insyte.Core.Entities.Subject", b =>
@@ -1977,13 +1793,9 @@ namespace Insyte.Infrastructure.Migrations
                 {
                     b.Navigation("AdvisedSchools");
 
-                    b.Navigation("CouncilMemberships");
-
                     b.Navigation("SchoolUsers");
 
                     b.Navigation("UploadedVideos");
-
-                    b.Navigation("WorkingGroupMemberships");
                 });
 
             modelBuilder.Entity("Insyte.Core.Entities.Video", b =>
@@ -1991,10 +1803,6 @@ namespace Insyte.Infrastructure.Migrations
                     b.Navigation("Evaluations");
                 });
 
-            modelBuilder.Entity("Insyte.Core.Entities.WorkingGroup", b =>
-                {
-                    b.Navigation("Members");
-                });
 #pragma warning restore 612, 618
         }
     }
