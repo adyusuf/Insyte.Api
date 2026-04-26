@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <rect width="200" height="200" fill="#0f2d4a"/>
+  <circle cx="100" cy="85" r="50" fill="none" stroke="#ffffff" stroke-width="4"/>
+  <circle cx="100" cy="85" r="40" fill="none" stroke="#4a90d9" stroke-width="2"/>
+  <path d="M60,85 Q80,60 100,55 Q120,60 140,85 Q120,110 100,115 Q80,110 60,85Z" fill="#4a90d9" opacity="0.4"/>
+  <path d="M75,85 Q88,68 100,65 Q112,68 125,85 Q112,102 100,105 Q88,102 75,85Z" fill="#ffffff" opacity="0.9"/>
+  <text x="100" y="89" text-anchor="middle" fill="#0f2d4a" font-size="13" font-family="Arial" font-weight="bold">B</text>
+  <text x="100" y="155" text-anchor="middle" fill="#4a90d9" font-size="10" font-family="Arial" font-weight="bold">BOĞAZİÇİ ÖZEL</text>
+  <text x="100" y="170" text-anchor="middle" fill="#4a90d9" font-size="10" font-family="Arial" font-weight="bold">ANADOLU LİSESİ</text>
+</svg>

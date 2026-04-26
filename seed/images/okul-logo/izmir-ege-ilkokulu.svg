@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <rect width="200" height="200" fill="#1a5c38"/>
+  <circle cx="100" cy="75" r="35" fill="#f5c518"/>
+  <circle cx="100" cy="75" r="28" fill="#1a5c38"/>
+  <path d="M100,47 L106,67 L127,67 L111,79 L117,99 L100,87 L83,99 L89,79 L73,67 L94,67Z" fill="#f5c518"/>
+  <rect x="75" y="115" width="50" height="6" fill="#ffffff"/>
+  <rect x="82" y="125" width="12" height="20" fill="#ffffff"/>
+  <rect x="99" y="125" width="19" height="20" rx="2" fill="#ffffff"/>
+  <text x="100" y="163" text-anchor="middle" fill="#f5c518" font-size="9.5" font-family="Arial" font-weight="bold">İZMİR EGE</text>
+  <text x="100" y="177" text-anchor="middle" fill="#f5c518" font-size="9.5" font-family="Arial" font-weight="bold">İLKÖĞRETİM OKULU</text>
+</svg>
