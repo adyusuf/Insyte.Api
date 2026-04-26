@@ -1,93 +1,55 @@
 using Insyte.API.DTOs;
-using Insyte.Core.Entities;
-using Insyte.Infrastructure.Data;
+using Insyte.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Insyte.API.Controllers;
 
 [ApiController]
 [Route("api/schools/{schoolId}/subjects")]
 [Authorize]
-public class SubjectsController : ControllerBase
+public class SubjectsController : BaseController
 {
-    private readonly InsyteDbContext _db;
+    private readonly ISubjectService _subjectService;
 
-    public SubjectsController(InsyteDbContext db) => _db = db;
+    public SubjectsController(ISubjectService subjectService) => _subjectService = subjectService;
 
     [HttpGet]
     public async Task<IActionResult> GetAll(Guid schoolId, [FromQuery] string? search, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
-        if (!await _db.Schools.AnyAsync(s => s.Id == schoolId))
-            return NotFound(new ApiError(false, "Okul bulunamadı"));
+        var (schoolExists, result) = await _subjectService.GetAllAsync(schoolId, search, page, pageSize);
+        if (!schoolExists) return NotFound(new ApiError(false, "Okul bulunamadı"));
 
-        var query = _db.Subjects.Where(s => s.SchoolId == schoolId);
-
-        if (!string.IsNullOrEmpty(search))
-            query = query.Where(s => s.Name.Contains(search) || s.Branch.Contains(search));
-
-        var total = await query.CountAsync();
-        var items = await query
-            .OrderBy(s => s.Name)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(s => new SubjectDto(s.Id, s.SchoolId, s.Name, s.Branch, s.Level, s.Description, s.WeeklyHours, s.IsActive, s.CreatedAt, s.UpdatedAt))
-            .ToListAsync();
-
-        return Ok(new ApiResponse<PagedResult<SubjectDto>>(true, new PagedResult<SubjectDto>(items, total, page, pageSize)));
+        return Ok(new ApiResponse<PagedResult<SubjectDto>>(true, result));
     }
 
     [HttpGet("{subjectId}")]
     public async Task<IActionResult> GetById(Guid schoolId, Guid subjectId)
     {
-        var subject = await _db.Subjects.FirstOrDefaultAsync(s => s.Id == subjectId && s.SchoolId == schoolId);
+        var subject = await _subjectService.GetByIdAsync(subjectId, schoolId);
         if (subject == null) return NotFound(new ApiError(false, "Ders bulunamadı"));
 
-        var dto = new SubjectDto(subject.Id, subject.SchoolId, subject.Name, subject.Branch, subject.Level, subject.Description, subject.WeeklyHours, subject.IsActive, subject.CreatedAt, subject.UpdatedAt);
-        return Ok(new ApiResponse<SubjectDto>(true, dto));
+        return Ok(new ApiResponse<SubjectDto>(true, subject));
     }
 
     [HttpPost]
     [Authorize(Policy = "AllStaff")]
     public async Task<IActionResult> Create(Guid schoolId, [FromBody] CreateSubjectRequest request)
     {
-        if (!await _db.Schools.AnyAsync(s => s.Id == schoolId))
-            return NotFound(new ApiError(false, "Okul bulunamadı"));
+        var (success, error, subject) = await _subjectService.CreateAsync(schoolId, request);
+        if (!success) return NotFound(new ApiError(false, error!));
 
-        var subject = new Subject
-        {
-            SchoolId = schoolId,
-            Name = request.Name,
-            Branch = request.Branch,
-            Level = request.Level,
-            Description = request.Description,
-            WeeklyHours = request.WeeklyHours
-        };
-
-        _db.Subjects.Add(subject);
-        await _db.SaveChangesAsync();
-
-        return CreatedAtAction(nameof(GetById), new { schoolId, subjectId = subject.Id },
-            new ApiResponse<SubjectDto>(true, new SubjectDto(subject.Id, subject.SchoolId, subject.Name, subject.Branch, subject.Level, subject.Description, subject.WeeklyHours, subject.IsActive, subject.CreatedAt, subject.UpdatedAt)));
+        return CreatedAtAction(nameof(GetById), new { schoolId, subjectId = subject!.Id },
+            new ApiResponse<SubjectDto>(true, subject));
     }
 
     [HttpPut("{subjectId}")]
     [Authorize(Policy = "AllStaff")]
     public async Task<IActionResult> Update(Guid schoolId, Guid subjectId, [FromBody] UpdateSubjectRequest request)
     {
-        var subject = await _db.Subjects.FirstOrDefaultAsync(s => s.Id == subjectId && s.SchoolId == schoolId);
-        if (subject == null) return NotFound(new ApiError(false, "Ders bulunamadı"));
+        var (success, error) = await _subjectService.UpdateAsync(subjectId, schoolId, request);
+        if (!success) return NotFound(new ApiError(false, error!));
 
-        if (request.Name != null) subject.Name = request.Name;
-        if (request.Branch != null) subject.Branch = request.Branch;
-        if (request.Level != null) subject.Level = request.Level;
-        if (request.Description != null) subject.Description = request.Description;
-        if (request.WeeklyHours.HasValue) subject.WeeklyHours = request.WeeklyHours.Value;
-        if (request.IsActive.HasValue) subject.IsActive = request.IsActive.Value;
-        subject.UpdatedAt = DateTime.UtcNow;
-
-        await _db.SaveChangesAsync();
         return Ok(new ApiResponse<object>(true, null, "Ders güncellendi"));
     }
 
@@ -95,12 +57,8 @@ public class SubjectsController : ControllerBase
     [Authorize(Policy = "AllStaff")]
     public async Task<IActionResult> Delete(Guid schoolId, Guid subjectId)
     {
-        var subject = await _db.Subjects.FirstOrDefaultAsync(s => s.Id == subjectId && s.SchoolId == schoolId);
-        if (subject == null) return NotFound(new ApiError(false, "Ders bulunamadı"));
-
-        subject.IsActive = false;
-        subject.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
+        var (success, error) = await _subjectService.DeleteAsync(subjectId, schoolId);
+        if (!success) return NotFound(new ApiError(false, error!));
 
         return Ok(new ApiResponse<object>(true, null, "Ders deaktif edildi"));
     }

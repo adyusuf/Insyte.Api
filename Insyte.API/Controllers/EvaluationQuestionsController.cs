@@ -1,32 +1,24 @@
 using Insyte.API.DTOs;
-using Insyte.Core.Entities;
-using Insyte.Infrastructure.Data;
+using Insyte.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Insyte.API.Controllers;
 
 [ApiController]
 [Route("api/criteria/{criteriaId}/questions")]
 [Authorize]
-public class EvaluationQuestionsController : ControllerBase
+public class EvaluationQuestionsController : BaseController
 {
-    private readonly InsyteDbContext _db;
+    private readonly IEvaluationQuestionService _questionService;
 
-    public EvaluationQuestionsController(InsyteDbContext db) => _db = db;
+    public EvaluationQuestionsController(IEvaluationQuestionService questionService) => _questionService = questionService;
 
     [HttpGet]
     public async Task<IActionResult> GetAll(Guid criteriaId)
     {
-        if (!await _db.EvaluationCriteria.AnyAsync(c => c.Id == criteriaId))
-            return NotFound(new ApiError(false, "Kriter bulunamadı"));
-
-        var questions = await _db.EvaluationQuestions
-            .Where(q => q.CriteriaId == criteriaId)
-            .OrderBy(q => q.Order)
-            .Select(q => new EvaluationQuestionDto(q.Id, q.CriteriaId, q.Question, q.Category, q.Order, q.IsActive, q.CreatedAt))
-            .ToListAsync();
+        var (criteriaExists, questions) = await _questionService.GetAllAsync(criteriaId);
+        if (!criteriaExists) return NotFound(new ApiError(false, "Kriter bulunamadı"));
 
         return Ok(new ApiResponse<List<EvaluationQuestionDto>>(true, questions));
     }
@@ -34,48 +26,29 @@ public class EvaluationQuestionsController : ControllerBase
     [HttpGet("{questionId}")]
     public async Task<IActionResult> GetById(Guid criteriaId, Guid questionId)
     {
-        var q = await _db.EvaluationQuestions.FirstOrDefaultAsync(x => x.Id == questionId && x.CriteriaId == criteriaId);
-        if (q == null) return NotFound(new ApiError(false, "Soru bulunamadı"));
+        var question = await _questionService.GetByIdAsync(questionId, criteriaId);
+        if (question == null) return NotFound(new ApiError(false, "Soru bulunamadı"));
 
-        return Ok(new ApiResponse<EvaluationQuestionDto>(true,
-            new EvaluationQuestionDto(q.Id, q.CriteriaId, q.Question, q.Category, q.Order, q.IsActive, q.CreatedAt)));
+        return Ok(new ApiResponse<EvaluationQuestionDto>(true, question));
     }
 
     [HttpPost]
     [Authorize(Policy = "AdminOrAdvisor")]
     public async Task<IActionResult> Create(Guid criteriaId, [FromBody] CreateEvaluationQuestionRequest request)
     {
-        if (!await _db.EvaluationCriteria.AnyAsync(c => c.Id == criteriaId))
-            return NotFound(new ApiError(false, "Kriter bulunamadı"));
+        var (success, error, result) = await _questionService.CreateAsync(criteriaId, request);
+        if (!success) return NotFound(new ApiError(false, error!));
 
-        var question = new EvaluationQuestion
-        {
-            CriteriaId = criteriaId,
-            Question = request.Question,
-            Category = request.Category,
-            Order = request.Order
-        };
-
-        _db.EvaluationQuestions.Add(question);
-        await _db.SaveChangesAsync();
-
-        return Ok(new ApiResponse<object>(true, new { question.Id }, "Soru oluşturuldu"));
+        return Ok(new ApiResponse<object>(true, result, "Soru oluşturuldu"));
     }
 
     [HttpPut("{questionId}")]
     [Authorize(Policy = "AdminOrAdvisor")]
     public async Task<IActionResult> Update(Guid criteriaId, Guid questionId, [FromBody] UpdateEvaluationQuestionRequest request)
     {
-        var question = await _db.EvaluationQuestions.FirstOrDefaultAsync(q => q.Id == questionId && q.CriteriaId == criteriaId);
-        if (question == null) return NotFound(new ApiError(false, "Soru bulunamadı"));
+        var (success, error) = await _questionService.UpdateAsync(questionId, criteriaId, request);
+        if (!success) return NotFound(new ApiError(false, error!));
 
-        if (!string.IsNullOrEmpty(request.Question)) question.Question = request.Question;
-        if (request.Category != null) question.Category = request.Category;
-        if (request.Order.HasValue) question.Order = request.Order.Value;
-        if (request.IsActive.HasValue) question.IsActive = request.IsActive.Value;
-        question.UpdatedAt = DateTime.UtcNow;
-
-        await _db.SaveChangesAsync();
         return Ok(new ApiResponse<object>(true, null, "Soru güncellendi"));
     }
 
@@ -83,11 +56,8 @@ public class EvaluationQuestionsController : ControllerBase
     [Authorize(Policy = "AdminOrAdvisor")]
     public async Task<IActionResult> Delete(Guid criteriaId, Guid questionId)
     {
-        var question = await _db.EvaluationQuestions.FirstOrDefaultAsync(q => q.Id == questionId && q.CriteriaId == criteriaId);
-        if (question == null) return NotFound(new ApiError(false, "Soru bulunamadı"));
-
-        _db.EvaluationQuestions.Remove(question);
-        await _db.SaveChangesAsync();
+        var (success, error) = await _questionService.DeleteAsync(questionId, criteriaId);
+        if (!success) return NotFound(new ApiError(false, error!));
 
         return Ok(new ApiResponse<object>(true, null, "Soru silindi"));
     }

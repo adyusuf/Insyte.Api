@@ -1,5 +1,7 @@
 using System.Text;
 using System.Threading.RateLimiting;
+using Insyte.API.Services;
+using Insyte.API.Services.Interfaces;
 using Insyte.Core.Entities;
 using Insyte.Core.Enums;
 using Insyte.Infrastructure.Data;
@@ -39,6 +41,22 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("AdminOrAdvisor", policy => policy.RequireRole("Admin", "Advisor"));
     options.AddPolicy("AllStaff", policy => policy.RequireRole("Admin", "Advisor", "SchoolAdmin"));
 });
+
+// Servis katmanı kayıtları
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ISchoolService, Insyte.API.Services.SchoolService>();
+builder.Services.AddScoped<IClassService, ClassService>();
+builder.Services.AddScoped<ISubjectService, SubjectService>();
+builder.Services.AddScoped<IScheduleService, ScheduleService>();
+builder.Services.AddScoped<IVideoService, VideoService>();
+builder.Services.AddScoped<IEvaluationService, EvaluationService>();
+builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<ICriteriaService, CriteriaService>();
+builder.Services.AddScoped<IEvaluationQuestionService, EvaluationQuestionService>();
+builder.Services.AddScoped<IAIConfigService, AIConfigService>();
+builder.Services.AddScoped<ISchoolDetailsService, SchoolDetailsService>();
+builder.Services.AddScoped<ITeacherService, TeacherService>();
 
 // HTTP Context Accessor
 builder.Services.AddHttpContextAccessor();

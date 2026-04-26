@@ -1,32 +1,24 @@
 using Insyte.API.DTOs;
-using Insyte.Core.Entities;
-using Insyte.Infrastructure.Data;
+using Insyte.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Insyte.API.Controllers;
 
 [ApiController]
 [Route("api/schools/{schoolId}/activities")]
 [Authorize]
-public class SchoolActivitiesController : ControllerBase
+public class SchoolActivitiesController : BaseController
 {
-    private readonly InsyteDbContext _db;
+    private readonly ISchoolDetailsService _detailsService;
 
-    public SchoolActivitiesController(InsyteDbContext db) => _db = db;
+    public SchoolActivitiesController(ISchoolDetailsService detailsService) => _detailsService = detailsService;
 
     [HttpGet]
     public async Task<IActionResult> GetAll(Guid schoolId)
     {
-        if (!await _db.Schools.AnyAsync(s => s.Id == schoolId))
-            return NotFound(new ApiError(false, "Okul bulunamadı"));
-
-        var activities = await _db.SchoolActivities
-            .Where(a => a.SchoolId == schoolId)
-            .OrderBy(a => a.Activity)
-            .Select(a => new SchoolActivityDto(a.Id, a.SchoolId, a.Activity, a.CreatedAt))
-            .ToListAsync();
+        var (schoolExists, activities) = await _detailsService.GetActivitiesAsync(schoolId);
+        if (!schoolExists) return NotFound(new ApiError(false, "Okul bulunamadı"));
 
         return Ok(new ApiResponse<List<SchoolActivityDto>>(true, activities));
     }
@@ -35,34 +27,22 @@ public class SchoolActivitiesController : ControllerBase
     [Authorize(Policy = "AllStaff")]
     public async Task<IActionResult> Add(Guid schoolId, [FromBody] AddSchoolActivityRequest request)
     {
-        if (!await _db.Schools.AnyAsync(s => s.Id == schoolId))
-            return NotFound(new ApiError(false, "Okul bulunamadı"));
-
-        if (await _db.SchoolActivities.AnyAsync(a => a.SchoolId == schoolId && a.Activity == request.Activity))
-            return BadRequest(new ApiError(false, "Bu aktivite zaten eklenmiş"));
-
-        var activity = new SchoolActivity
+        var (success, error, activity) = await _detailsService.AddActivityAsync(schoolId, request.Activity);
+        if (!success)
         {
-            SchoolId = schoolId,
-            Activity = request.Activity
-        };
+            if (error == "Okul bulunamadı") return NotFound(new ApiError(false, error));
+            return BadRequest(new ApiError(false, error!));
+        }
 
-        _db.SchoolActivities.Add(activity);
-        await _db.SaveChangesAsync();
-
-        return Ok(new ApiResponse<SchoolActivityDto>(true, new SchoolActivityDto(activity.Id, activity.SchoolId, activity.Activity, activity.CreatedAt), "Aktivite eklendi"));
+        return Ok(new ApiResponse<SchoolActivityDto>(true, activity, "Aktivite eklendi"));
     }
 
     [HttpDelete("{activityId}")]
     [Authorize(Policy = "AllStaff")]
     public async Task<IActionResult> Remove(Guid schoolId, Guid activityId)
     {
-        var activity = await _db.SchoolActivities.FirstOrDefaultAsync(a => a.Id == activityId && a.SchoolId == schoolId);
-        if (activity == null)
-            return NotFound(new ApiError(false, "Aktivite bulunamadı"));
-
-        _db.SchoolActivities.Remove(activity);
-        await _db.SaveChangesAsync();
+        var (success, error) = await _detailsService.RemoveActivityAsync(schoolId, activityId);
+        if (!success) return NotFound(new ApiError(false, error!));
 
         return Ok(new ApiResponse<object>(true, null, "Aktivite kaldırıldı"));
     }

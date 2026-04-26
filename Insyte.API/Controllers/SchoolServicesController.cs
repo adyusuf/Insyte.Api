@@ -1,32 +1,25 @@
 using Insyte.API.DTOs;
-using Insyte.Core.Entities;
-using Insyte.Infrastructure.Data;
+using Insyte.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using SchoolServiceEnum = Insyte.Core.Enums.SchoolService;
 
 namespace Insyte.API.Controllers;
 
 [ApiController]
 [Route("api/schools/{schoolId}/services")]
 [Authorize]
-public class SchoolServicesController : ControllerBase
+public class SchoolServicesController : BaseController
 {
-    private readonly InsyteDbContext _db;
+    private readonly ISchoolDetailsService _detailsService;
 
-    public SchoolServicesController(InsyteDbContext db) => _db = db;
+    public SchoolServicesController(ISchoolDetailsService detailsService) => _detailsService = detailsService;
 
     [HttpGet]
     public async Task<IActionResult> GetAll(Guid schoolId)
     {
-        if (!await _db.Schools.AnyAsync(s => s.Id == schoolId))
-            return NotFound(new ApiError(false, "Okul bulunamadı"));
-
-        var services = await _db.SchoolServices
-            .Where(s => s.SchoolId == schoolId)
-            .OrderBy(s => s.Service)
-            .Select(s => new SchoolServiceDto(s.Id, s.SchoolId, s.Service, s.CreatedAt))
-            .ToListAsync();
+        var (schoolExists, services) = await _detailsService.GetServicesAsync(schoolId);
+        if (!schoolExists) return NotFound(new ApiError(false, "Okul bulunamadı"));
 
         return Ok(new ApiResponse<List<SchoolServiceDto>>(true, services));
     }
@@ -35,34 +28,22 @@ public class SchoolServicesController : ControllerBase
     [Authorize(Policy = "AllStaff")]
     public async Task<IActionResult> Add(Guid schoolId, [FromBody] AddSchoolServiceRequest request)
     {
-        if (!await _db.Schools.AnyAsync(s => s.Id == schoolId))
-            return NotFound(new ApiError(false, "Okul bulunamadı"));
-
-        if (await _db.SchoolServices.AnyAsync(s => s.SchoolId == schoolId && s.Service == request.Service))
-            return BadRequest(new ApiError(false, "Bu hizmet zaten eklenmiş"));
-
-        var service = new SchoolServiceOffering
+        var (success, error, service) = await _detailsService.AddServiceAsync(schoolId, (SchoolServiceEnum)request.Service);
+        if (!success)
         {
-            SchoolId = schoolId,
-            Service = request.Service
-        };
+            if (error == "Okul bulunamadı") return NotFound(new ApiError(false, error));
+            return BadRequest(new ApiError(false, error!));
+        }
 
-        _db.SchoolServices.Add(service);
-        await _db.SaveChangesAsync();
-
-        return Ok(new ApiResponse<SchoolServiceDto>(true, new SchoolServiceDto(service.Id, service.SchoolId, service.Service, service.CreatedAt), "Hizmet eklendi"));
+        return Ok(new ApiResponse<SchoolServiceDto>(true, service, "Hizmet eklendi"));
     }
 
     [HttpDelete("{serviceId}")]
     [Authorize(Policy = "AllStaff")]
     public async Task<IActionResult> Remove(Guid schoolId, Guid serviceId)
     {
-        var service = await _db.SchoolServices.FirstOrDefaultAsync(s => s.Id == serviceId && s.SchoolId == schoolId);
-        if (service == null)
-            return NotFound(new ApiError(false, "Hizmet bulunamadı"));
-
-        _db.SchoolServices.Remove(service);
-        await _db.SaveChangesAsync();
+        var (success, error) = await _detailsService.RemoveServiceAsync(schoolId, serviceId);
+        if (!success) return NotFound(new ApiError(false, error!));
 
         return Ok(new ApiResponse<object>(true, null, "Hizmet kaldırıldı"));
     }

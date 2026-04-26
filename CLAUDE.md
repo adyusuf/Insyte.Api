@@ -240,12 +240,118 @@ Detay: `docs/ai-entegrasyon.md`.
 - Bounce/failure log'lanır, dashboard'da görünür.
 - Detay: `docs/eposta-pipeline.md`.
 
+## Katman sorumlulukları — kritik
+
+### Controller katmanı (Insyte.Api)
+
+Controller **sadece HTTP katmanıdır.** İçinde iş mantığı olmaz.
+
+Controller'ın tek sorumluluğu:
+1. İsteği al
+2. Yetki kontrolü yap (service'e gitmeden önce)
+3. Service'i çağır
+4. Sonucu HTTP yanıtına dönüştür
+
+```csharp
+// ✅ DOĞRU — controller ince, tüm iş service'te
+[HttpPost("{id}/onayla")]
+public async Task<IActionResult> RaporOnayla(Guid id, CancellationToken ct)
+{
+    if (!await _yetki.AksiyonYapabilirMi(KullaniciId, "rapor.onayla"))
+        return Forbid();
+
+    var result = await _raporService.Onayla(id, KullaniciId, ct);
+    return result.Match<IActionResult>(Ok, NotFound, Conflict);
+}
+
+// ❌ YANLIŞ — iş mantığı controller'da
+[HttpPost("{id}/onayla")]
+public async Task<IActionResult> RaporOnayla(Guid id)
+{
+    var rapor = await _db.Raporlar.FindAsync(id);
+    if (rapor == null) return NotFound();
+    if (rapor.Durum != RaporDurum.OnayBekliyor) return Conflict("Zaten işlendi");
+    rapor.Durum = RaporDurum.Onaylandi;
+    rapor.OnaylayanId = KullaniciId;
+    rapor.OnayTarihi = DateTime.UtcNow;
+    await _db.SaveChangesAsync();
+    // PDF üret, e-posta gönder...  ← YANLIŞ YER
+    return Ok();
+}
+```
+
+Controller'da **yasak olanlar:**
+- `DbContext` / repository doğrudan kullanımı
+- `if/else` iş kuralı dallanması (durum geçişleri, validasyon vb.)
+- Hesaplama, dönüşüm, formatlama
+- Başka servisleri orkestre etme (birden fazla service çağrısını koordine etme)
+- Hangfire job kuyruğa ekleme (service sorumlulugu)
+
+### Service katmanı (Insyte.Application)
+
+Tüm iş mantığı burada yaşar. Her modülün kendi service'i olur.
+
+```
+Insyte.Application/
+├── Services/
+│   ├── IOkulService.cs + OkulService.cs
+│   ├── IVideoService.cs + VideoService.cs
+│   ├── IRaporService.cs + RaporService.cs
+│   ├── IEvaluationService.cs + EvaluationService.cs
+│   ├── IAuthService.cs + AuthService.cs
+│   └── IYetkiService.cs + YetkiService.cs
+├── DTOs/
+│   ├── Requests/
+│   └── Responses/
+└── Validators/
+    └── <DTO>Validator.cs
+```
+
+Service'te yapılanlar:
+- İş kuralı doğrulama (durum geçişleri, kota kontrolü, izin kontrolleri)
+- Repository/DbContext üzerinden veri erişimi
+- Birden fazla kaynaktan veri toplama ve dönüştürme
+- Hangfire job kuyruğa ekleme
+- Domain event tetikleme
+
+```csharp
+// ✅ DOĞRU — tüm iş mantığı service'te
+public class RaporService : IRaporService
+{
+    public async Task<RaporOnayla Result> OnaylaAsync(Guid raporId, Guid onaylayanId, CancellationToken ct)
+    {
+        var rapor = await _db.Raporlar
+            .Include(r => r.Degerlendirme)
+            .FirstOrDefaultAsync(r => r.Id == raporId, ct);
+
+        if (rapor is null)
+            return RaporOnaylaResult.Bulunamadi;
+
+        if (rapor.Durum != RaporDurum.OnayBekliyor)
+            return RaporOnaylaResult.ZatenIslendi;
+
+        rapor.Durum       = RaporDurum.Onaylandi;
+        rapor.OnaylayanId = onaylayanId;
+        rapor.OnayTarihi  = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(ct);
+
+        // Arka plan işleri service'ten tetiklenir
+        _backgroundJobs.Enqueue<IPdfService>(s => s.UretAsync(rapor.Id, CancellationToken.None));
+        _backgroundJobs.Enqueue<IEmailService>(s => s.GonderAsync(rapor.Id, CancellationToken.None));
+
+        return RaporOnaylaResult.Basarili(rapor.Id);
+    }
+}
+```
+
 ## Validasyon
 
 - **FluentValidation** — controller'da manuel `if` ile validasyon yok
-- Her DTO için `<DTO>Validator` sınıfı
+- Her request DTO için `<DTO>Validator` sınıfı
 - Hata mesajları **Türkçe**
-- Domain kuralı (örn: "video boyutu 2GB'ı aşamaz") Domain entity'sinde
+- Domain kuralı (örn: "video boyutu 2GB'ı aşamaz") → Domain entity veya service'te
+- Format/alan validasyonu (örn: "email geçerli mi") → FluentValidator'da
 
 ## Test
 
@@ -299,10 +405,12 @@ Smtp__Password=...
 
 ## Yapma
 
-- ❌ Controller içine iş mantığı yazma
-- ❌ Entity'leri doğrudan controller'dan döndürme
-- ❌ Yetki kontrolünü unutma. **Hem sayfa hem okul** kontrol edilir.
-- ❌ AI çağrısını sync yapma — Hangfire job
+- ❌ **Controller içine iş mantığı yazma** — durum kontrolü, hesaplama, orkestrasyon hepsi service'e
+- ❌ **Controller'da `DbContext` veya repository kullanma** — sadece service inject edilir
+- ❌ **Service'i atla, controller'dan direkt DB'ye git** — her zaman service katmanından geç
+- ❌ Entity'leri doğrudan controller'dan döndürme — DTO kullan
+- ❌ Yetki kontrolünü unutma. **Hem sayfa hem okul** kontrol edilir — controller'da
+- ❌ AI çağrısını sync yapma — Hangfire job, service'ten kuyruğa eklenir
 - ❌ AI yanıtını kullanıcıya **otomatik göstermek** — onay süreci kritik
 - ❌ Token sayısını kayıt etmemek — her çağrıda kayıt zorunlu
 - ❌ Video dosyasını DB'de tutmak
@@ -310,3 +418,4 @@ Smtp__Password=...
 - ❌ Production'da `Database.EnsureCreated()`
 - ❌ `async void` (event handler hariç)
 - ❌ `.Result` / `.Wait()`
+- ❌ Birden fazla service'i controller'da koordine etme — bunu yapan üst service yaz

@@ -1,33 +1,25 @@
 using Insyte.API.DTOs;
-using Insyte.Core.Entities;
+using Insyte.API.Services.Interfaces;
 using Insyte.Core.Enums;
-using Insyte.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Insyte.API.Controllers;
 
 [ApiController]
 [Route("api/schools/{schoolId}/facilities")]
 [Authorize]
-public class SchoolFacilitiesController : ControllerBase
+public class SchoolFacilitiesController : BaseController
 {
-    private readonly InsyteDbContext _db;
+    private readonly ISchoolDetailsService _detailsService;
 
-    public SchoolFacilitiesController(InsyteDbContext db) => _db = db;
+    public SchoolFacilitiesController(ISchoolDetailsService detailsService) => _detailsService = detailsService;
 
     [HttpGet]
     public async Task<IActionResult> GetAll(Guid schoolId)
     {
-        if (!await _db.Schools.AnyAsync(s => s.Id == schoolId))
-            return NotFound(new ApiError(false, "Okul bulunamadı"));
-
-        var facilities = await _db.SchoolFacilities
-            .Where(f => f.SchoolId == schoolId)
-            .OrderBy(f => f.Facility)
-            .Select(f => new SchoolFacilityDto(f.Id, f.SchoolId, f.Facility, f.CreatedAt))
-            .ToListAsync();
+        var (schoolExists, facilities) = await _detailsService.GetFacilitiesAsync(schoolId);
+        if (!schoolExists) return NotFound(new ApiError(false, "Okul bulunamadı"));
 
         return Ok(new ApiResponse<List<SchoolFacilityDto>>(true, facilities));
     }
@@ -36,34 +28,22 @@ public class SchoolFacilitiesController : ControllerBase
     [Authorize(Policy = "AllStaff")]
     public async Task<IActionResult> Add(Guid schoolId, [FromBody] AddSchoolFacilityRequest request)
     {
-        if (!await _db.Schools.AnyAsync(s => s.Id == schoolId))
-            return NotFound(new ApiError(false, "Okul bulunamadı"));
-
-        if (await _db.SchoolFacilities.AnyAsync(f => f.SchoolId == schoolId && f.Facility == request.Facility))
-            return BadRequest(new ApiError(false, "Bu imkan zaten eklenmiş"));
-
-        var facility = new SchoolFacility
+        var (success, error, facility) = await _detailsService.AddFacilityAsync(schoolId, request.Facility);
+        if (!success)
         {
-            SchoolId = schoolId,
-            Facility = request.Facility
-        };
+            if (error == "Okul bulunamadı") return NotFound(new ApiError(false, error));
+            return BadRequest(new ApiError(false, error!));
+        }
 
-        _db.SchoolFacilities.Add(facility);
-        await _db.SaveChangesAsync();
-
-        return Ok(new ApiResponse<SchoolFacilityDto>(true, new SchoolFacilityDto(facility.Id, facility.SchoolId, facility.Facility, facility.CreatedAt), "Fiziksel imkan eklendi"));
+        return Ok(new ApiResponse<SchoolFacilityDto>(true, facility, "Fiziksel imkan eklendi"));
     }
 
     [HttpDelete("{facilityId}")]
     [Authorize(Policy = "AllStaff")]
     public async Task<IActionResult> Remove(Guid schoolId, Guid facilityId)
     {
-        var facility = await _db.SchoolFacilities.FirstOrDefaultAsync(f => f.Id == facilityId && f.SchoolId == schoolId);
-        if (facility == null)
-            return NotFound(new ApiError(false, "Fiziksel imkan bulunamadı"));
-
-        _db.SchoolFacilities.Remove(facility);
-        await _db.SaveChangesAsync();
+        var (success, error) = await _detailsService.RemoveFacilityAsync(schoolId, facilityId);
+        if (!success) return NotFound(new ApiError(false, error!));
 
         return Ok(new ApiResponse<object>(true, null, "Fiziksel imkan kaldırıldı"));
     }
